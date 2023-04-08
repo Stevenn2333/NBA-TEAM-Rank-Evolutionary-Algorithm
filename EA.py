@@ -9,7 +9,7 @@ def read_data(filename):
     df = pd.read_csv(filename)
     return df
 
-
+#F: formula F O F, F 0 N， N O F， N O N， V O V， V O F, F O V, V O N, N O V. N: Numeric value, V: Variable, O: operator
 class FormulaEvaluator:
     def __init__(self, data):
         self.data = data
@@ -50,13 +50,6 @@ def print_formula(formula):
         if i % 2 == 1:
             expression += f' {operators[i // 2]} '
     print(expression)
-
-
-terms = ['Teams','Games', 'MinutesPlayed', 'FieldGoals', 'FieldGoalAttempts', 'FieldGoalPercentage', 'ThreePointers',
-         'ThreePointAttempts', 'ThreePointPercentage', 'TwoPointers', 'TwoPointAttempts', 'TwoPointPercentage',
-         'FreeThrows', 'FreeThrowAttempts', 'FreeThrowPercentage', 'OffensiveRebounds', 'DefensiveRebounds',
-         'TotalRebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers', 'PersonalFouls', 'Points', 'year', 'Rank']
-
 
 def generate_random_expression():
     operators = ['+', '-', '*', '/']
@@ -128,6 +121,10 @@ def select(population, fitness_values):
     selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
     return [population[i] for i in selected_indices]
 
+terms = ['Teams','Games', 'MinutesPlayed', 'FieldGoals', 'FieldGoalAttempts', 'FieldGoalPercentage', 'ThreePointers',
+         'ThreePointAttempts', 'ThreePointPercentage', 'TwoPointers', 'TwoPointAttempts', 'TwoPointPercentage',
+         'FreeThrows', 'FreeThrowAttempts', 'FreeThrowPercentage', 'OffensiveRebounds', 'DefensiveRebounds',
+         'TotalRebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers', 'PersonalFouls', 'Points', 'year', 'Rank']
 
 def main():
     start = time.time()
