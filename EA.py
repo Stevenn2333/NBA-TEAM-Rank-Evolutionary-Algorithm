@@ -1,6 +1,7 @@
 import random
 import pandas as pd
 import ast
+import math
 import time
 
 
@@ -101,7 +102,7 @@ def compute_fitness(population, dict):
             #print(dict[row]['Rank']-result)
             total_difference += abs(dict[row]['Rank'] - result)
             #print(total_difference)
-        fitness_values.append(1 / (total_difference/len(dict)))
+        fitness_values.append(1 / total_difference)
         #print(total_difference/len(dict))
         #print(total_difference)
         #fitness_values.append(total_difference/len(dict))
@@ -168,12 +169,40 @@ def main():
                 if random.random() < mutation_rate:
                     child = mutate(child)
                 new_population.append(child)
-
         population = new_population
 
     best_individual = population[fitness_values.index(max(fitness_values))]
     print('Best individual:', best_individual)
     print('Fitness value of Best individual:',max(fitness_values))
+
+    #Evaluation
+    difference = 0
+    results = []
+    for i in range(len(dictionaries)):
+        result = evaluate_expression(best_individual, dictionaries[i])
+        results.append((i, result))
+
+    results = []
+    for i in range(len(dictionaries)):
+        result = evaluate_expression(best_individual, dictionaries[i])
+        results.append((i, result))
+
+    # Sort the results based on the result value (second item in the tuple)
+    sorted_results = sorted(results, key=lambda x: x[1])
+
+    # Match the ranks with the result and the corresponding i
+    rank_to_i = {}
+    for rank, (i, result) in enumerate(sorted_results, 1):
+        rank_to_i[rank] = i
+
+    # Create an inverse mapping of rank_to_i
+    i_to_rank = {i: rank for rank, i in rank_to_i.items()}  
+
+    for i in range(len(dictionaries)):
+        difference += (dictionaries[i]['Rank'] - i_to_rank.get(i))**2
+    MSE = difference/len(dictionaries)  
+    print('The MSE of best individual is:',MSE) 
+
     end = time.time()
     print('Running time:', end - start, 'seconds')
 
