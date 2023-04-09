@@ -103,18 +103,37 @@ def compute_fitness(population, dict):
 
     return fitness_values
 
+def find_matching_parenthesis(expression, index):
+        open_parentheses = 0
+        while index < len(expression):
+            if expression[index] == '(':
+                open_parentheses += 1
+            elif expression[index] == ')':
+                open_parentheses -= 1
+                if open_parentheses == 0:
+                    return index
+            index += 1
+        return -1
 
 def crossover(parent1, parent2):
-    crossover_point = random.randint(1, len(parent1) - 2)
-    child1 = parent1[:crossover_point] + parent2[crossover_point:]
-    child2 = parent2[:crossover_point] + parent1[crossover_point:]
+    crossover_point = random.randint(0, 2)
+    if crossover_point == 0:
+        return parent1, parent2
+    open_paren_index = [i for i, c in enumerate(parent1) if c == '('][crossover_point - 1]
+    close_paren_index = find_matching_parenthesis(parent1, open_paren_index)
+    child1 = parent1[:open_paren_index] + parent2[open_paren_index:close_paren_index + 1] + parent1[close_paren_index + 1:]
+    open_paren_index = [i for i, c in enumerate(parent2) if c == '('][crossover_point - 1]
+    close_paren_index = find_matching_parenthesis(parent2, open_paren_index)
+    child2 = parent2[:open_paren_index] + parent1[open_paren_index:close_paren_index + 1] + parent2[close_paren_index + 1:]
     return child1, child2
 
-
 def mutate(individual):
-    index = random.randint(0, len(individual) - 1)
-    mutated_individual = individual[:index] + generate_random_expression() + individual[index + 1:]
+    index = random.randint(0, 2)
+    open_paren_index = [i for i, c in enumerate(individual) if c == '('][index]
+    close_paren_index = find_matching_parenthesis(individual, open_paren_index)
+    mutated_individual = individual[:open_paren_index] + generate_random_expression() + individual[close_paren_index + 1:]
     return mutated_individual
+
 
 
 def select(population, fitness_values):
