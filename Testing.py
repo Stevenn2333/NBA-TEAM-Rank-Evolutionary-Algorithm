@@ -15,6 +15,13 @@ class ExprNode:
         self.value = value
         self.left = left
         self.right = right
+    
+    def PrintTree(self):
+      if self.left:
+         self.left.PrintTree()
+      print( self.value,end = ''),
+      if self.right:
+         self.right.PrintTree()
 
 
 class FormulaEvaluator:
@@ -33,20 +40,21 @@ class FormulaEvaluator:
         op = node.value
 
         if op == "+":
-            return left + right
+            result = left + right
         elif op == "-":
-            return left - right
+            result =  left - right
         elif op == "*":
-            return left * right
+            result = left * right
         elif op == "/":
-            try:
-                return left / right
-            except ZeroDivisionError:
-                return float('inf')
+            if right < 1E-6:
+                right = 1E-6
+            result = left / right
         else:
             raise ValueError(f"Invalid node type: {node}")
+        return result
 
 
+        
 def create_dicts(dataframe):
     dicts = []
     for _, row in dataframe.iterrows():
@@ -56,10 +64,10 @@ def create_dicts(dataframe):
         dicts.append(row_dict)
     return dicts
 
-terms = ['Teams', 'Games', 'MinutesPlayed', 'FieldGoals', 'FieldGoalAttempts', 'FieldGoalPercentage', 'ThreePointers',
+terms = ['Games', 'MinutesPlayed', 'FieldGoals', 'FieldGoalAttempts', 'FieldGoalPercentage', 'ThreePointers',
              'ThreePointAttempts', 'ThreePointPercentage', 'TwoPointers', 'TwoPointAttempts', 'TwoPointPercentage',
              'FreeThrows', 'FreeThrowAttempts', 'FreeThrowPercentage', 'OffensiveRebounds', 'DefensiveRebounds',
-             'TotalRebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers', 'PersonalFouls', 'Points', 'year', 'Rank']
+             'TotalRebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers', 'PersonalFouls', 'Points']
 def random_expr():
     operators = ['+', '-', '*', '/']
     
@@ -89,7 +97,10 @@ def compute_fitness(population, dictionaries):
         for row in dictionaries:
             result = evaluate_expression(individual, row)
             total_difference += abs(row['Rank'] - result)
-        fitness_values.append(1 / total_difference)
+        if total_difference < 1E-6:
+            total_difference = 1E-6
+        fitness = 1/total_difference
+        fitness_values.append(fitness)
 
     return fitness_values
 
@@ -123,6 +134,42 @@ def select(population, fitness_values):
     selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
     return [population[i] for i in selected_indices]
 
+def cumulative_prob_distribution(fitness):
+    s = sum(fitness)
+    result = []
+    cp = 0
+    if s == 0:
+        for j in range(len(fitness)):
+            cp += 1/len(fitness)
+            result.append(cp)
+    else:
+        for i in fitness:
+            cp += i/s
+            result.append(cp)
+    return result
+
+def MPS(fitness, mating_pool_size,population):
+    """Multi-pointer selection (MPS)"""
+    # fitness is a list of fitness of all individual
+
+    selected_to_mate = []
+
+    # student code starts
+    fitness_p = cumulative_prob_distribution(fitness)
+    step = 1/mating_pool_size
+    r = random.uniform(0,step)
+    current_member = 0
+    i = 0
+    while current_member < mating_pool_size:
+        while r <= fitness_p[i]:
+            selected_to_mate.append(i)
+            r += step
+            current_member += 1
+        i += 1
+    # student code ends
+    return [population[i] for i in selected_to_mate]
+
+
 def main():
     start = time.time()
     data = read_data('output.csv')
@@ -134,6 +181,7 @@ def main():
     dictionaries = create_dicts(data)
 
     population = [random_expr() for _ in range(population_size)]
+    #print(population)
 
     for generation in range(num_generations):
         fitness_values = compute_fitness(population, dictionaries)
@@ -141,6 +189,7 @@ def main():
 
         for _ in range(population_size // 2):
             parents = select(population, fitness_values)
+            #parents = MPS(fitness_values, mating_pool_size = 2,population = population)
 
             if random.random() < crossover_rate:
                 offspring = crossover(parents[0], parents[1])
@@ -154,8 +203,10 @@ def main():
         population = new_population
 
     best_individual = population[fitness_values.index(max(fitness_values))]
-    print('Best individual:', best_individual)
-    print('Fitness value of Best individual:', max(fitness_values))
+    #print('Best individual:', best_individual.PrintTree())
+    print('Best individual:')
+    best_individual.PrintTree()
+    print('\nFitness value of Best individual:', max(fitness_values))
 
     # Evaluation
     difference = 0
@@ -173,10 +224,30 @@ def main():
     i_to_rank = {i: rank for rank, i in rank_to_i.items()}
 
     print("i to rank is ", i_to_rank)
+
+    team_names = [
+    "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
+    "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
+    "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
+    "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
+    "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
+    "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
+    "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
+    "Sacramento Kings", "Houston Rockets", "League Average"
+    ]
+
     for i in range(len(dictionaries)):
         difference += (dictionaries[i]['Rank'] - i_to_rank.get(i)) ** 2
+        #print(dictionaries[i]['Rank'],i_to_rank.get(i))
     MSE = difference / len(dictionaries)
     print('The MSE of best individual is:', MSE)
+    # Replace the keys with the corresponding team names
+    i_to_team = {i: team_names[i] for i in range(len(team_names))}
+
+    # Use the correct i_to_rank mapping
+    rank_to_team = {rank: i_to_team[i] for i, rank in i_to_rank.items()}
+
+    print("Rank to team is:", rank_to_team)
 
     end = time.time()
     print('Running time:', end - start, 'seconds')

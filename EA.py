@@ -196,6 +196,28 @@ def main():
     i_to_rank = {i: rank for rank, i in rank_to_i.items()}  
 
     print("i to rank is ",i_to_rank)
+
+    team_names = [
+    "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
+    "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
+    "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
+    "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
+    "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
+    "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
+    "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
+    "Sacramento Kings", "Houston Rockets", "League Average"
+    ]
+
+    # Replace the keys with the corresponding team names
+    i_to_team = {i: team_names[i] for i in range(len(team_names))}
+
+    # Use the correct i_to_rank mapping
+    rank_to_team = {rank: i_to_team[i] for i, rank in i_to_rank.items()}
+
+    print("Rank to team is:", rank_to_team)
+
+
+
     for i in range(len(dictionaries)):
         difference += (dictionaries[i]['Rank'] - i_to_rank.get(i))**2
     MSE = difference/len(dictionaries)  
