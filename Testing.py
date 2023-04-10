@@ -171,6 +171,7 @@ def MPS(fitness, mating_pool_size,population):
 
 
 def main():
+    random.seed(20)
     start = time.time()
     data = read_data('output.csv')
     num_generations = 100
