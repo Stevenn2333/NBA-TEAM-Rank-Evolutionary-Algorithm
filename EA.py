@@ -3,130 +3,176 @@ import pandas as pd
 import ast
 import math
 import time
+import matplotlib.pyplot as plt
 
 
 def read_data(filename):
     df = pd.read_csv(filename)
     return df
 
-#F: formula F O F, F 0 N， N O F， N O N， V O V， V O F, F O V, V O N, N O V. N: Numeric value, V: Variable, O: operator
+
+class ExprNode:
+    def __init__(self, value, left=None, right=None):
+        self.value = value
+        self.left = left
+        self.right = right
+    
+    def PrintTree(self):
+      if self.left:
+         self.left.PrintTree()
+      print( self.value,end = ''),
+      if self.right:
+         self.right.PrintTree()
+
+
 class FormulaEvaluator:
     def __init__(self, data):
         self.data = data
 
-    def evaluate(self, formula):
-        tree = ast.parse(formula, mode='eval')
-        return self._eval_node(tree.body)
+    def evaluate(self, node):
+        return self._eval_node(node)
 
     def _eval_node(self, node):
-        if isinstance(node, ast.BinOp):
-            left = self._eval_node(node.left)
-            right = self._eval_node(node.right)
-            operator = self._eval_node(node.op)
-            return operator(left, right)
-        elif isinstance(node, ast.Name):
-            return self.data.get(node.id)
-        elif isinstance(node, ast.Num):
-            return node.n
-        elif isinstance(node, ast.Add):
-            return lambda x, y: x + y
-        elif isinstance(node, ast.Sub):
-            return lambda x, y: x - y
-        elif isinstance(node, ast.Mult):
-            return lambda x, y: x * y
-        elif isinstance(node, ast.Div):
-            return lambda x, y: x / y
+        if node.left is None and node.right is None:
+            return self.data.get(node.value)
+
+        left = self._eval_node(node.left) if node.left is not None else None
+        right = self._eval_node(node.right) if node.right is not None else None
+        op = node.value
+
+        if op == "+":
+            result = left + right
+        elif op == "-":
+            result =  left - right
+        elif op == "*":
+            result = left * right
+        elif op == "/":
+            if right < 1E-6:
+                right = 1E-6
+            result = left / right
         else:
             raise ValueError(f"Invalid node type: {node}")
+        return result
 
 
-def print_formula(formula):
-    terms = formula.split()
-    operators = terms[1::2]
-    expression = ''
+        
+def create_dicts(dataframe):
+    dicts = []
+    for _, row in dataframe.iterrows():
+        row_dict = {}
+        for column_name in dataframe.columns:
+            row_dict[column_name] = row[column_name]
+        dicts.append(row_dict)
+    return dicts
 
-    for i in range(len(terms)):
-        expression += terms[i]
-        if i % 2 == 1:
-            expression += f' {operators[i // 2]} '
-    print(expression)
-
-def generate_random_expression():
+terms = ['Games', 'MinutesPlayed', 'FieldGoals', 'FieldGoalAttempts', 'FieldGoalPercentage', 'ThreePointers',
+             'ThreePointAttempts', 'ThreePointPercentage', 'TwoPointers', 'TwoPointAttempts', 'TwoPointPercentage',
+             'FreeThrows', 'FreeThrowAttempts', 'FreeThrowPercentage', 'OffensiveRebounds', 'DefensiveRebounds',
+             'TotalRebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers', 'PersonalFouls', 'Points']
+def random_expr():
     operators = ['+', '-', '*', '/']
-    _expression = ''
+    
 
-    for _ in range(3):
-        term1 = random.choice(terms)
-        term2 = random.choice(terms)
-        operator = random.choice(operators)
+    term1 = random.choice(terms)
+    term2 = random.choice(terms)
+    operator = random.choice(operators)
 
-        _expression += f'({term1} {operator} {term2})'
-        if _ < 2:
-            _expression += f'{random.choice(operators)}'
-
-    return _expression
+    return ExprNode(operator, ExprNode(term1), ExprNode(term2))
 
 
-def evaluate_expression(expression,row):
-    '''try:
-        result = eval(expression, {}, row.to_dict())
-    except ZeroDivisionError:
-        result = float('inf')'''
+def evaluate_expression(expression, row):
     try:
-        expression = generate_random_expression()
-        data = {term: random.uniform(0, 100) for term in terms}
+        data = {term: row[term] for term in terms}
         evaluator = FormulaEvaluator(data)
-        #print(data)
         result = evaluator.evaluate(expression)
-        #print(result)
     except ZeroDivisionError:
         result = float('inf')
-    #print(result)
     return result
 
 
-def compute_fitness(population, dict):
+def compute_fitness(population, dictionaries):
     fitness_values = []
 
     for individual in population:
         total_difference = 0
-        for row in range(len(dict)):
-            result = evaluate_expression(individual, dict[row])
-            #print(dict[row]['Rank']-result)
-            total_difference += abs(dict[row]['Rank'] - result)
-            #print(total_difference)
-        fitness_values.append(1 / total_difference)
-        #print(total_difference/len(dict))
-        #print(total_difference)
-        #fitness_values.append(total_difference/len(dict))
-        #print(fitness_values)
+        for row in dictionaries:
+            result = evaluate_expression(individual, row)
+            total_difference += abs(row['Rank'] - result)
+        if total_difference < 1E-6:
+            total_difference = 1E-6
+        fitness = 1/total_difference
+        fitness_values.append(fitness)
 
     return fitness_values
 
 
 def crossover(parent1, parent2):
-    crossover_point = random.randint(1, len(parent1) - 2)
-    child1 = parent1[:crossover_point] + parent2[crossover_point:]
-    child2 = parent2[:crossover_point] + parent1[crossover_point:]
+    if parent1.left is not None and parent2.left is not None:
+        child1_left, child2_left = crossover(parent1.left, parent2.left)
+    else:
+        child1_left, child2_left = parent1.left, parent2.left
+
+    if parent1.right is not None and parent2.right is not None:
+        child1_right, child2_right = crossover(parent1.right, parent2.right)
+    else:
+        child1_right, child2_right = parent1.right, parent2.right
+
+    child1 = ExprNode(parent1.value, child1_left, child1_right)
+    child2 = ExprNode(parent2.value, child2_left, child2_right)
+
     return child1, child2
 
-
 def mutate(individual):
-    index = random.randint(0, len(individual) - 1)
-    mutated_individual = individual[:index] + generate_random_expression() + individual[index + 1:]
-    return mutated_individual
-
+    if random.random() < 0.5 and individual.left is not None:
+        individual.left = mutate(individual.left)
+    elif individual.right is not None:
+        individual.right = mutate(individual.right)
+    else:
+        individual = random_expr()
+    return individual
 
 def select(population, fitness_values):
     selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
     return [population[i] for i in selected_indices]
 
-terms = ['Teams','Games', 'MinutesPlayed', 'FieldGoals', 'FieldGoalAttempts', 'FieldGoalPercentage', 'ThreePointers',
-         'ThreePointAttempts', 'ThreePointPercentage', 'TwoPointers', 'TwoPointAttempts', 'TwoPointPercentage',
-         'FreeThrows', 'FreeThrowAttempts', 'FreeThrowPercentage', 'OffensiveRebounds', 'DefensiveRebounds',
-         'TotalRebounds', 'Assists', 'Steals', 'Blocks', 'Turnovers', 'PersonalFouls', 'Points', 'year', 'Rank']
+def cumulative_prob_distribution(fitness):
+    s = sum(fitness)
+    result = []
+    cp = 0
+    if s == 0:
+        for j in range(len(fitness)):
+            cp += 1/len(fitness)
+            result.append(cp)
+    else:
+        for i in fitness:
+            cp += i/s
+            result.append(cp)
+    return result
+
+def MPS(fitness, mating_pool_size,population):
+    """Multi-pointer selection (MPS)"""
+    # fitness is a list of fitness of all individual
+
+    selected_to_mate = []
+
+    # student code starts
+    fitness_p = cumulative_prob_distribution(fitness)
+    step = 1/mating_pool_size
+    r = random.uniform(0,step)
+    current_member = 0
+    i = 0
+    while current_member < mating_pool_size:
+        while r <= fitness_p[i]:
+            selected_to_mate.append(i)
+            r += step
+            current_member += 1
+        i += 1
+    # student code ends
+    return [population[i] for i in selected_to_mate]
+
 
 def main():
+    random.seed(20)
     start = time.time()
     data = read_data('output.csv')
     num_generations = 100
@@ -134,24 +180,15 @@ def main():
     crossover_rate = 0.7
     mutation_rate = 0.1
     depth = 3
-
-    def create_dicts(dataframe):
-        dicts = []
-        for _, row in dataframe.iterrows():
-            row_dict = {}
-            for column_name in dataframe.columns:
-                row_dict[column_name] = row[column_name]
-            dicts.append(row_dict)
-        return dicts
-
-    # put the row in a dictionary
     dictionaries = create_dicts(data)
-    #print(dictionaries[0])
 
-    population = [generate_random_expression() for _ in range(population_size)]
+    population = [random_expr() for _ in range(population_size)]
+    best_fitness_values = []
 
     for generation in range(num_generations):
         fitness_values = compute_fitness(population, dictionaries)
+        best_fitness = max(fitness_values)
+        best_fitness_values.append(best_fitness)
         new_population = []
 
         for _ in range(population_size // 2):
@@ -169,44 +206,49 @@ def main():
         population = new_population
 
     best_individual = population[fitness_values.index(max(fitness_values))]
-    print('Best individual:', best_individual)
-    print('Fitness value of Best individual:',max(fitness_values))
+    print('Best individual:')
+    best_individual.PrintTree()
+    print('\nFitness value of Best individual:', max(fitness_values))
 
-    #Evaluation
+    # Plot the fitness trend
+    plt.plot(best_fitness_values)
+    plt.xlabel('Generation')
+    plt.ylabel('Best Fitness Value')
+    plt.title('Trend of Fitness Values')
+    plt.show()
+
+    # Evaluation
     difference = 0
     results = []
     for i in range(len(dictionaries)):
         result = evaluate_expression(best_individual, dictionaries[i])
         results.append((i, result))
 
-    results = []
-    for i in range(len(dictionaries)):
-        result = evaluate_expression(best_individual, dictionaries[i])
-        results.append((i, result))
-
-    # Sort the results based on the result value (second item in the tuple)
     sorted_results = sorted(results, key=lambda x: x[1])
 
-    # Match the ranks with the result and the corresponding i
     rank_to_i = {}
     for rank, (i, result) in enumerate(sorted_results, 1):
         rank_to_i[rank] = i
 
-    # Create an inverse mapping of rank_to_i
-    i_to_rank = {i: rank for rank, i in rank_to_i.items()}  
+    i_to_rank = {i: rank for rank, i in rank_to_i.items()}
 
-    print("i to rank is ",i_to_rank)
+    print("i to rank is ", i_to_rank)
 
     team_names = [
-    "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
-    "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
-    "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
-    "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
-    "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
-    "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
-    "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
-    "Sacramento Kings", "Houston Rockets", "League Average"
+        "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
+        "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
+        "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
+        "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
+        "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
+        "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
+        "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
+        "Sacramento Kings", "Houston Rockets", "League Average"
     ]
+
+    for i in range(len(dictionaries)):
+        difference += (dictionaries[i]['Rank'] - i_to_rank.get(i)) ** 2
+    MSE = difference / len(dictionaries)
+    print('The MSE of best individual is:', MSE)
 
     # Replace the keys with the corresponding team names
     i_to_team = {i: team_names[i] for i in range(len(team_names))}
@@ -215,13 +257,6 @@ def main():
     rank_to_team = {rank: i_to_team[i] for i, rank in i_to_rank.items()}
 
     print("Rank to team is:", rank_to_team)
-
-
-
-    for i in range(len(dictionaries)):
-        difference += (dictionaries[i]['Rank'] - i_to_rank.get(i))**2
-    MSE = difference/len(dictionaries)  
-    print('The MSE of best individual is:',MSE) 
 
     end = time.time()
     print('Running time:', end - start, 'seconds')

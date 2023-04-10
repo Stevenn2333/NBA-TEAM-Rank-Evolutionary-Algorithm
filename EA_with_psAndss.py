@@ -3,7 +3,8 @@ import pandas as pd
 import ast
 import math
 import time
-import matplotlib.pyplot as plt
+import parent_selection
+import survivor_selection
 
 
 def read_data(filename):
@@ -135,40 +136,7 @@ def select(population, fitness_values):
     selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
     return [population[i] for i in selected_indices]
 
-def cumulative_prob_distribution(fitness):
-    s = sum(fitness)
-    result = []
-    cp = 0
-    if s == 0:
-        for j in range(len(fitness)):
-            cp += 1/len(fitness)
-            result.append(cp)
-    else:
-        for i in fitness:
-            cp += i/s
-            result.append(cp)
-    return result
 
-def MPS(fitness, mating_pool_size,population):
-    """Multi-pointer selection (MPS)"""
-    # fitness is a list of fitness of all individual
-
-    selected_to_mate = []
-
-    # student code starts
-    fitness_p = cumulative_prob_distribution(fitness)
-    step = 1/mating_pool_size
-    r = random.uniform(0,step)
-    current_member = 0
-    i = 0
-    while current_member < mating_pool_size:
-        while r <= fitness_p[i]:
-            selected_to_mate.append(i)
-            r += step
-            current_member += 1
-        i += 1
-    # student code ends
-    return [population[i] for i in selected_to_mate]
 
 
 def main():
@@ -179,43 +147,45 @@ def main():
     population_size = 100
     crossover_rate = 0.7
     mutation_rate = 0.1
-    depth = 3
+    mating_pool_size = 20
+    tournament_size = 4
     dictionaries = create_dicts(data)
 
     population = [random_expr() for _ in range(population_size)]
-    best_fitness_values = []
+    fitness_values = compute_fitness(population, dictionaries)
 
     for generation in range(num_generations):
         fitness_values = compute_fitness(population, dictionaries)
-        best_fitness = max(fitness_values)
-        best_fitness_values.append(best_fitness)
+        #print(len(fitness_values))
         new_population = []
+        new_population_fitness = []
+        
+        #parents = select(population, fitness_values)
+        #parents = parent_selection.MPS(fitness_values, mating_pool_size,population)
+        #parents = parent_selection.tournament(fitness_values, mating_pool_size, tournament_size,population)
+        parents = parent_selection.random_uniform (population_size, mating_pool_size,population)
 
-        for _ in range(population_size // 2):
-            parents = select(population, fitness_values)
+        if random.random() < crossover_rate:
+            offspring = crossover(parents[0], parents[1])
+        else:
+            offspring = parents
 
-            if random.random() < crossover_rate:
-                offspring = crossover(parents[0], parents[1])
-            else:
-                offspring = parents
-
-            for child in offspring:
-                if random.random() < mutation_rate:
-                    child = mutate(child)
-                new_population.append(child)
-        population = new_population
+        for child in offspring:
+            if random.random() < mutation_rate:
+                child = mutate(child)
+            new_population.append(child)
+        new_population_fitness=compute_fitness(new_population,dictionaries)
+        #print(new_population,new_population_fitness)
+        population = survivor_selection.random_uniform(population,fitness_values,new_population,new_population_fitness)
+        #population = survivor_selection.replacement(population,fitness_values,new_population,new_population_fitness)
+        #population = survivor_selection.mu_plus_lambda(population,fitness_values,new_population,new_population_fitness)
+        #population = new_population
 
     best_individual = population[fitness_values.index(max(fitness_values))]
+    #print('Best individual:', best_individual.PrintTree())
     print('Best individual:')
     best_individual.PrintTree()
     print('\nFitness value of Best individual:', max(fitness_values))
-
-    # Plot the fitness trend
-    plt.plot(best_fitness_values)
-    plt.xlabel('Generation')
-    plt.ylabel('Best Fitness Value')
-    plt.title('Trend of Fitness Values')
-    plt.show()
 
     # Evaluation
     difference = 0
@@ -235,21 +205,21 @@ def main():
     print("i to rank is ", i_to_rank)
 
     team_names = [
-        "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
-        "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
-        "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
-        "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
-        "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
-        "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
-        "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
-        "Sacramento Kings", "Houston Rockets", "League Average"
+    "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
+    "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
+    "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
+    "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
+    "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
+    "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
+    "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
+    "Sacramento Kings", "Houston Rockets", "League Average"
     ]
 
     for i in range(len(dictionaries)):
         difference += (dictionaries[i]['Rank'] - i_to_rank.get(i)) ** 2
+        #print(dictionaries[i]['Rank'],i_to_rank.get(i))
     MSE = difference / len(dictionaries)
     print('The MSE of best individual is:', MSE)
-
     # Replace the keys with the corresponding team names
     i_to_team = {i: team_names[i] for i in range(len(team_names))}
 
@@ -263,3 +233,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
