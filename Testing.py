@@ -3,6 +3,7 @@ import pandas as pd
 import ast
 import math
 import time
+import matplotlib.pyplot as plt
 
 
 def read_data(filename):
@@ -182,15 +183,16 @@ def main():
     dictionaries = create_dicts(data)
 
     population = [random_expr() for _ in range(population_size)]
-    #print(population)
+    best_fitness_values = []
 
     for generation in range(num_generations):
         fitness_values = compute_fitness(population, dictionaries)
+        best_fitness = max(fitness_values)
+        best_fitness_values.append(best_fitness)
         new_population = []
 
         for _ in range(population_size // 2):
             parents = select(population, fitness_values)
-            #parents = MPS(fitness_values, mating_pool_size = 2,population = population)
 
             if random.random() < crossover_rate:
                 offspring = crossover(parents[0], parents[1])
@@ -204,10 +206,16 @@ def main():
         population = new_population
 
     best_individual = population[fitness_values.index(max(fitness_values))]
-    #print('Best individual:', best_individual.PrintTree())
     print('Best individual:')
     best_individual.PrintTree()
     print('\nFitness value of Best individual:', max(fitness_values))
+
+    # Plot the fitness trend
+    plt.plot(best_fitness_values)
+    plt.xlabel('Generation')
+    plt.ylabel('Best Fitness Value')
+    plt.title('Trend of Fitness Values')
+    plt.show()
 
     # Evaluation
     difference = 0
@@ -227,21 +235,21 @@ def main():
     print("i to rank is ", i_to_rank)
 
     team_names = [
-    "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
-    "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
-    "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
-    "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
-    "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
-    "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
-    "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
-    "Sacramento Kings", "Houston Rockets", "League Average"
+        "Boston Celtics", "Dallas Mavericks", "Golden State Warriors", "Miami Heat",
+        "Cleveland Cavaliers", "New York Knicks", "Toronto Raptors", "Phoenix Suns",
+        "Philadelphia 76ers", "Utah Jazz", "Los Angeles Clippers", "Memphis Grizzlies",
+        "New Orleans Pelicans", "Denver Nuggets", "Oklahoma City Thunder", "Washington Wizards",
+        "Chicago Bulls", "Milwaukee Bucks", "Brooklyn Nets", "Orlando Magic",
+        "Atlanta Hawks", "Detroit Pistons", "San Antonio Spurs", "Minnesota Timberwolves",
+        "Indiana Pacers", "Charlotte Hornets", "Los Angeles Lakers", "Portland Trail Blazers",
+        "Sacramento Kings", "Houston Rockets", "League Average"
     ]
 
     for i in range(len(dictionaries)):
         difference += (dictionaries[i]['Rank'] - i_to_rank.get(i)) ** 2
-        #print(dictionaries[i]['Rank'],i_to_rank.get(i))
     MSE = difference / len(dictionaries)
     print('The MSE of best individual is:', MSE)
+
     # Replace the keys with the corresponding team names
     i_to_team = {i: team_names[i] for i in range(len(team_names))}
 
@@ -255,7 +263,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
