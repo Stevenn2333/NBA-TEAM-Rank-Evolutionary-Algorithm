@@ -5,6 +5,7 @@ import math
 import time
 import parent_selection
 import survivor_selection
+import matplotlib.pyplot as plt
 
 
 def read_data(filename):
@@ -136,9 +137,6 @@ def select(population, fitness_values):
     selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
     return [population[i] for i in selected_indices]
 
-
-
-
 def main():
     random.seed(20)
     start = time.time()
@@ -154,12 +152,16 @@ def main():
     population = [random_expr() for _ in range(population_size)]
     fitness_values = compute_fitness(population, dictionaries)
 
+    best_fitness_values = []
+
     for generation in range(num_generations):
         fitness_values = compute_fitness(population, dictionaries)
         #print(len(fitness_values))
         new_population = []
         new_population_fitness = []
-        
+        fitness_values = compute_fitness(population, dictionaries)
+        best_fitness_value = max(fitness_values)
+        best_fitness_values.append(best_fitness_value)
         #parents = select(population, fitness_values)
         #parents = parent_selection.MPS(fitness_values, mating_pool_size,population)
         #parents = parent_selection.tournament(fitness_values, mating_pool_size, tournament_size,population)
@@ -186,7 +188,11 @@ def main():
     print('Best individual:')
     best_individual.PrintTree()
     print('\nFitness value of Best individual:', max(fitness_values))
-
+    plt.plot(best_fitness_values)
+    plt.xlabel('Generation')
+    plt.ylabel('Best Fitness Value')
+    plt.title('Trend of Fitness Values')
+    plt.show()
     # Evaluation
     difference = 0
     results = []
